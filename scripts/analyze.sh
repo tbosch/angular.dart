@@ -8,6 +8,8 @@ echo '==========='
 echo '== BUILD =='
 echo '==========='
 
+export DARTANALYZER=dartanalyzer
+
 OUT=tmp/all.dart
 mkdir -p tmp
 
