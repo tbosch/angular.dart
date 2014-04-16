@@ -72,5 +72,7 @@ fi
     --browsers=$BROWSERS --single-run --no-colors
 
 if [[ $TESTS != "dart2js" ]]; then
-  ./scripts/generate-documentation.sh;
+  if [[ $CHANNEL != "DEV" ]]; then
+    ./scripts/generate-documentation.sh;
+  fi
 fi
