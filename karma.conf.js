@@ -8,14 +8,14 @@ module.exports = function(config) {
     // all tests must be 'included', but all other libraries must be 'served' and
     // optionally 'watched' only.
     files: [
+      'packages/web_components/platform.js',
+      'packages/web_components/dart_support.js',
       'test/jasmine_syntax.dart',
       'test/*.dart',
       'test/**/*_spec.dart',
       'test/config/filter_tests.dart',
       {pattern: '**/*.dart', watched: true, included: false, served: true},
-      'packages/browser/dart.js',
-      'packages/browser/interop.js',
-      'packages/shadow_dom/shadow_dom.debug.js'
+      'packages/browser/dart.js'
     ],
 
     exclude: [
