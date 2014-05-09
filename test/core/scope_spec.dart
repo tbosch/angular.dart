@@ -1304,6 +1304,18 @@ void main() {
         log.clear();
       });
 
+
+      it('should invoke toString() on a number in dart2js', (RootScope rootScope, Logger log) {
+        rootScope.context['foo'] = 0;
+        String expression = 'foo.toString()';
+        rootScope.watch(expression, (v, o) => log([v, o]));
+        expect(log).toEqual([]);
+        rootScope.apply();
+        expect(log).toEqual([["0", null]]);
+        log.clear();
+      });
+
+
       it('should watch closures both as a leaf and as method call', (RootScope rootScope, Logger log) {
         rootScope.context['foo'] = new Foo();
         rootScope.context['increment'] = null;
