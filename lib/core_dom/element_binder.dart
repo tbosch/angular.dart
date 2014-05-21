@@ -242,7 +242,8 @@ class ElementBinder {
     if (ref.type == TextMustache) {
       nodeModule.bindByKey(TEXT_MUSTACHE_KEY, toFactory: (Injector injector) {
         return new TextMustache(node, ref.value, injector.getByKey(INTERPOLATE_KEY),
-            injector.getByKey(SCOPE_KEY), injector.getByKey(FORMATTER_MAP_KEY));
+            injector.getByKey(SCOPE_KEY), injector.getByKey(FORMATTER_MAP_KEY),
+            injector.getByKey(ELEMENT_PROBE_KEY));
       });
     } else if (ref.type == AttrMustache) {
       if (nodesAttrsDirectives.isEmpty) {
@@ -251,7 +252,7 @@ class ElementBinder {
           var interpolate = injector.getByKey(INTERPOLATE_KEY);
           for (var ref in nodesAttrsDirectives) {
             new AttrMustache(nodeAttrs, ref.value, interpolate, scope,
-                injector.getByKey(FORMATTER_MAP_KEY));
+                injector.getByKey(FORMATTER_MAP_KEY), injector.getByKey(ELEMENT_PROBE_KEY));
           }
         });
       }
