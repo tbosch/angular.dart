@@ -83,7 +83,7 @@ void main() {
         expect(js.context['ngQuery']).toBeDefined();
         expect(angular).toBeDefined();
         expect(angular['resumeBootstrap']).toBeDefined();
-        expect(angular['enableAnimations']).toBeDefined();
+        expect(angular['allowAnimations']).toBeDefined();
         expect(angular['element']).toBeDefined();
 
         expect(js.context['ngProbe'].apply([ngtop])).toBeDefined();
