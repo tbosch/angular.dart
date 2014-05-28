@@ -10,59 +10,7 @@
  *     of the AngularDart repo.)
  */
 
-var env = process.env,
-    fs = require('fs'),
-    path = require('path');
-
-
-function getBaseUrl() {
-  if (env.NGDART_EXAMPLE_BASEURL) {
-    return env.NGDART_EXAMPLE_BASEURL;
-  } else if (env.USER == 'chirayu') {
-    return 'http://example.ngdart.localhost';
-  } else {
-    // Default host:port when you run "pub serve" from the example
-    // subdirectory of the AngularDart repo.
-    return 'http://localhost:8080';
-  }
-}
-
-
-function getDartiumBinary() {
-  var ensure = function(condition) {
-    if (!condition) throw "Unable to locate Dartium.  Please set the DARTIUM environment variable.";
-  };
-
-  // DARTIUM is set by scripts/env.sh for Travis.
-  if (env.DARTIUM) {
-    return env.DARTIUM;
-  }
-  var platform = require('os').platform();
-  var DART_SDK = env.DART_SDK;
-  if (DART_SDK) {
-    // Locate the chromium directory as a sibling of the DART_SDK
-    // directory.  (It's there if you unpacked the full Dart distribution.)
-    var chromiumRoot = path.join(DART_SDK, "../chromium");
-    ensure(fs.existsSync(chromiumRoot));
-    var binary = path.join(chromiumRoot,
-        (platform == 'darwin') ? 'Chromium.app/Contents/MacOS/Chromium' : 'chrome');
-    ensure(fs.existsSync(binary));
-    return binary;
-  }
-  // Last resort: Try the standard location on Macs for the AngularDart team.
-  var binary = '/Applications/dart/chromium/Chromium.app/Contents/MacOS/Chromium';
-  ensure(platform == 'darwin' && fs.existsSync(binary));
-  return binary;
-}
-
-
-function getChromeOptions() {
-  // On Travis, this indicates if we're testing Dartium or dart2js.
-  return (env.TESTS == "dart2js") ? {} : {
-    'binary': getDartiumBinary()
-  };
-}
-
+var configQuery = require('./configQuery.js');
 
 exports.config = {
   seleniumAddress: 'http://127.0.0.1:4444/wd/hub',
@@ -77,11 +25,11 @@ exports.config = {
 
   multiCapabilities: [{
     'browserName': 'chrome',
-    'chromeOptions': getChromeOptions(),
+    'chromeOptions': configQuery.getChromeOptions(),
     count: 4
   }],
 
-  baseUrl: getBaseUrl(),
+  baseUrl: configQuery.getBaseUrl(),
 
   jasmineNodeOpts: {
     isVerbose: true, // display spec names.

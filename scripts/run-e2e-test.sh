@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Run E2E / Protractor tests.
+
 set -e
 
 . $(dirname $0)/env.sh
@@ -24,10 +26,6 @@ for s in ERR HUP INT QUIT PIPE TERM ; do
 done
 
 
-# run e2e / protractor tests
-#
-# Must be sourced from run-test.sh
-
 install_deps() {(
   mkdir e2e_bin
   cd e2e_bin
@@ -39,8 +37,7 @@ install_deps() {(
 )}
 
 
-# Start selenium
-start_servers() {(
+start_servers() {
   # Run examples.
   ( 
     cd example
@@ -50,7 +47,9 @@ start_servers() {(
     rm -rf build/web/packages
     ln -s $PWD/packages build/web/packages
   )
-  (cd example/build/web && python -m SimpleHTTPServer 8080) >/dev/null 2>&1 &
+  PORT=28000
+  (cd example/build/web && python -m SimpleHTTPServer $PORT) >/dev/null 2>&1 &
+  export NGDART_EXAMPLE_BASEURL=http://127.0.0.1:$PORT
 
   # Allow chromedriver to be found on the system path.
   export PATH=$PATH:$PWD/e2e_bin
@@ -59,7 +58,7 @@ start_servers() {(
   java -jar ./e2e_bin/selenium-server-standalone-2.42.0.jar >/dev/null 2>&1 &
 
   sleep 4 # wait for selenium startup
-)}
+}
 
 
 # Main
