@@ -101,7 +101,7 @@ void main() {
           expect(probe).toBeDefined();
           var bindings = probe['bindings'];
           expect(bindings['length']).toEqual(1);
-          expect(bindings[0]).toEqual('introspection FTW');
+          expect(bindings[0]).toEqual("'introspection FTW'");
         });
       });
     });
