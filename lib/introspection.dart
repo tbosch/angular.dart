@@ -136,7 +136,7 @@ List<Object> ngDirectives(nodeOrSelector) => ngProbe(nodeOrSelector).directives;
 
 
 js.JsObject _jsProbe(ElementProbe probe) {
-  return new js.JsObject.jsify({
+  return _jsify({
       "element": probe.element,
       "injector": _jsInjector(probe.injector),
       "scope": _jsScopeFromProbe(probe),
@@ -147,15 +147,69 @@ js.JsObject _jsProbe(ElementProbe probe) {
 
 
 js.JsObject _jsInjector(Injector injector) =>
-    new js.JsObject.jsify({"get": injector.get})..['_dart_'] = injector;
+    _jsify({"get": injector.get})..['_dart_'] = injector;
 
 
 js.JsObject _jsScopeFromProbe(ElementProbe probe) =>
     _jsScope(probe.scope, probe.injector.get(ScopeStatsConfig));
 
 
+
+// Work around http://dartbug.com/17752
+// Proxies a Dart function that accepts up to 10 parameters.
+js.JsFunction _jsFunction(Function fn) {
+  const Object X = __varargSentinel;
+  return new js.JsFunction.withThis(
+      (_, [o1=X, o2=X, o3=X, o4=X, o5=X, o6=X, o7=X, o8=X, o9=X, o10=X]) =>
+          __invokeFn(fn, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10));
+}
+
+
+const Object __varargSentinel = const Object();
+
+
+__invokeFn(fn, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10) {
+  var args = [o1, o2, o3, o4, o5, o6, o7, o8, o9, o10];
+  while (args.length > 0 && identical(args.last, __varargSentinel)) {
+    args.removeLast();
+  }
+  return _jsify(Function.apply(fn, args));
+}
+
+
+// Helper function to JSify a Dart object.  While this is *required* to JSify
+// the result of a scope.eval(), other uses are not required and are used to
+// work around http://dartbug.com/17752 in a convenient way (that bug affects
+// dart2js in checked mode.)
+_jsify(var obj) {
+  if (obj == null || obj is js.JsObject) {
+    return obj;
+  }
+  if (obj is Function) {
+    if (identical(1, 1.0)) {
+      // Only do this for dart2js.  This is not simply an optimization but works
+      // around a bug in Dartium when Dart code is invoking a JS function.  This
+      // bug is present in dart 1.4.0 but not in dart 1.5.0-dev.2.0.
+      // Specifically, if you call .apply([args]) or .callMethod(name, [args])
+      // on a JsFunction, in 1.4.0, the first param ends up as thisArg (even if
+      // you specify a thisArg to the apply call.)
+      return _jsFunction(obj);
+    }
+  }
+  if ((obj is Map) || (obj is Iterable)) {
+    var mappedObj = (obj is Map) ? 
+        new Map.fromIterables(obj.keys, obj.values.map(_jsify)) : obj.map(_jsify);
+    if (obj is List) {
+      mappedObj = new js.JsArray.from(mappedObj);
+    }
+    return new js.JsObject.jsify(mappedObj)..['_dart_'] = obj;
+  }
+  return obj;
+}
+
+
 js.JsObject _jsScope(Scope scope, ScopeStatsConfig config) {
-  return new js.JsObject.jsify({
+  return _jsify({
       "apply": scope.apply,
       "broadcast": scope.broadcast,
       "context": scope.context,
@@ -171,18 +225,6 @@ js.JsObject _jsScope(Scope scope, ScopeStatsConfig config) {
       "scopeStatsDisable": () => config.emit = false,
       r"$eval": (expr) => _jsify(scope.eval(expr)),
   })..['_dart_'] = scope;
-}
-
-
-// Helper function to JSify the result of a scope.eval() for simple cases.
-_jsify(var obj) {
-  if (obj is js.JsObject) {
-    return obj;
-  } else if (obj is Iterable) {
-    return new js.JsObject.jsify(obj)..['_dart_'] = obj;
-  } else {
-    return obj;
-  }
 }
 
 
@@ -247,9 +289,9 @@ class _Testability implements _JsObjectProxyable {
   }
 
   js.JsObject _toJsObject() {
-    return new js.JsObject.jsify({
-       'findBindings': (bindingString, [exactMatch]) => new js.JsArray.from(
-           findBindings(bindingString, exactMatch)),
+    return _jsify({
+       'findBindings': (bindingString, [exactMatch]) =>
+           findBindings(bindingString, exactMatch),
        'notifyWhenNoOutstandingRequests': (callback) =>
          notifyWhenNoOutstandingRequests(() => callback.apply([])),
     })..['_dart_'] = this;
@@ -274,7 +316,7 @@ class _TestabilityInjector implements _JsObjectProxyable {
   }
 
   js.JsObject _toJsObject() {
-    return new js.JsObject.jsify({
+    return _jsify({
       'get': (what) => get(what)._toJsObject(),
     })..['_dart_'] = this;
   }
@@ -309,7 +351,7 @@ class _TestabilityElement implements _JsObjectProxyable {
   scope() => probe.scope;
 
   js.JsObject _toJsObject() {
-    return new js.JsObject.jsify({
+    return _jsify({
       'injector': () => injector()._toJsObject(),
       'probe': () => _jsProbe(probe),
       'scope': () => _jsScopeFromProbe(probe),
@@ -320,15 +362,19 @@ class _TestabilityElement implements _JsObjectProxyable {
 
 
 void publishToJavaScript() {
-  var C = js.context;
-  C['ngProbe'] = (nodeOrSelector) => _jsProbe(ngProbe(nodeOrSelector));
-  C['ngInjector'] = (nodeOrSelector) => _jsInjector(ngInjector(nodeOrSelector));
-  C['ngScope'] = (nodeOrSelector) => _jsScopeFromProbe(ngProbe(nodeOrSelector));
-  C['ngQuery'] = (dom.Node node, String selector, [String containsText]) =>
-      new js.JsArray.from(ngQuery(node, selector, containsText));
-  C['angular'] = new js.JsObject.jsify({
+  var D = {};
+  D['ngProbe'] = (nodeOrSelector) => _jsProbe(ngProbe(nodeOrSelector));
+  D['ngInjector'] = (nodeOrSelector) => _jsInjector(ngInjector(nodeOrSelector));
+  D['ngScope'] = (nodeOrSelector) => _jsScopeFromProbe(ngProbe(nodeOrSelector));
+  D['ngQuery'] = (dom.Node node, String selector, [String containsText]) =>
+      ngQuery(node, selector, containsText);
+  D['angular'] = {
         'resumeBootstrap': ([arg]) {},
         'allowAnimations': _allowAnimations,
         'element': (node) => new _TestabilityElement(node)._toJsObject(),
-      });
+  };
+  js.JsObject J = _jsify(D);
+  for (String key in D.keys) {
+    js.context[key] = J[key];
+  }
 }
