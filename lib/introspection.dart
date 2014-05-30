@@ -162,10 +162,10 @@ js.JsFunction _jsFunction(Function fn) {
   const Object X = __varargSentinel;
   return new js.JsFunction.withThis(
       (thisArg, [o1=X, o2=X, o3=X, o4=X, o5=X, o6=X, o7=X, o8=X, o9=X, o10=X]) {
+        // Work around a bug in dart 1.4.0 where the closurized variable get's
+        // reset to something else.
+        fn = fnCopy;
         if (o10 == null && identical(o9, X)) {
-          // Work around a bug in dart 1.4.0 where the closurized variable get's
-          // reset to something else.
-          fn = fnCopy;
           // Work around another bug in dart 1.4.0.  This bug is not present in
           // dart 1.5.0-dev.2.0.
           // In dart 1.4.0, when running in Dartium (not dart2js), if you invoke
