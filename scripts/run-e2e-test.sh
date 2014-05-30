@@ -6,6 +6,8 @@ set -e
 
 . $(dirname $0)/env.sh
 
+SIGNALS=(ERR HUP INT QUIT PIPE TERM)
+
 _onSignal() {
   EXIT_CODE=$?
   # Kill all child processes (running servers.)
@@ -13,7 +15,7 @@ _onSignal() {
   # Need to explicitly kill ourselves to let the caller know we died from a
   # signal.  Ref: http://www.cons.org/cracauer/sigint.html
   sig=$1
-  trap - $sig  # disable this signal so we don't capture it again.
+  trap - "${SIGNALS[@]}"  # disable signals so we don't capture them again.
   if [[ "$sig" == "ERR" ]]; then
     exit $EXIT_CODE
   else
@@ -21,7 +23,7 @@ _onSignal() {
   fi
 }
 
-for s in ERR HUP INT QUIT PIPE TERM ; do
+for s in "${SIGNALS[@]}" ; do
   trap "_onSignal $s" $s
 done
 
