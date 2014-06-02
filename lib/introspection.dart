@@ -304,7 +304,7 @@ class _Testability implements _JsObjectProxyable {
   js.JsObject _toJsObject() {
     return _jsify({
        'findBindings': (bindingString, [exactMatch]) =>
-           findBindings(bindingString, exactMatch),
+           new js.JsArray.from(findBindings(bindingString, exactMatch)),
        'notifyWhenNoOutstandingRequests': (callback) =>
          notifyWhenNoOutstandingRequests(() => callback.apply([])),
     })..['_dart_'] = this;
