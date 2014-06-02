@@ -60,6 +60,7 @@ function getChromeOptions() {
     return {
       'binary': env.CHROME_BIN,
       // Ref: https://github.com/travis-ci/travis-ci/issues/938
+      //      https://sites.google.com/a/chromium.org/chromedriver/help/chrome-doesn-t-start
       'args': ['no-sandbox=true']
     };
   }
