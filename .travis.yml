@@ -23,6 +23,10 @@ env:
   - FIREFOX_VERSION="29.0"
   - CHROME_BIN=/usr/bin/google-chrome
   - secure: "AKoqpZ699egF0i4uT/FQ5b4jIc0h+KVbhtVCql0uFxwFIl2HjOYgDayrUCAf6USfpW0LghZxJJhBamWOl/505eNSe9HvEd8JLg/to+1Fo9xi9llsu5ehmNH31/5pue4EvsrVuEap1qqL6/BNwI2cAryayU0p5tV0g8gL5h4IxG8="
+  # Config for sending benchmark/perf metrics.
+  - NGDASH_BASE_URL=https://ng-dash.appspot.com
+  - NGDASH_USER_EMAIL=travis-ci.org
+  - secure: "n3KJsLLXEh1wlLRTF2wWvnDBAL+sOg+Mf/gc/Ub9/zCpXLDd1LP76hWBH/d7TCaC0oH5dnyD3ugV6PtJ7VEPRBZp72IbuNZzj8Ui8SisXVd0aos4u7s7X5NVwcxobhxd8Csoi5QPT31w8iT6qaC9VSXnYM3EEGqeppRqRBu6Hkg="
 
 # Don't test these branches.
 branches:
