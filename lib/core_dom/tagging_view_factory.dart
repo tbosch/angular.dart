@@ -1,5 +1,7 @@
 part of angular.core.dom_internal;
 
+var ngViewTag = new UserTag('NgView');
+
 class TaggingViewFactory implements ViewFactory {
   final List<TaggedElementBinder> elementBinders;
   final List<dom.Node> templateNodes;
@@ -16,12 +18,14 @@ class TaggingViewFactory implements ViewFactory {
       nodes = cloneElements(templateNodes);
     }
     var timerId;
+    var lastTag = ngViewTag.makeCurrent();
     try {
       assert((timerId = _perf.startTimer('ng.view')) != false);
       var view = new View(nodes, injector.getByKey(_EVENT_HANDLER_KEY));
       _link(view, nodes, injector);
       return view;
     } finally {
+      lastTag.makeCurrent();
       assert(_perf.stopTimer(timerId) != false);
     }
   }
