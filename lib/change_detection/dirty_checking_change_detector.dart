@@ -2,6 +2,8 @@ library dirty_checking_change_detector;
 
 import 'dart:collection';
 import 'package:angular/change_detection/change_detection.dart';
+import 'dart:async';
+import 'package:observe/observe.dart' as obs;
 
 /**
  * [DirtyCheckingChangeDetector] determines which object properties have changed
@@ -45,6 +47,9 @@ class DirtyCheckingChangeDetectorGroup<H> implements ChangeDetectorGroup<H> {
    * [_head]-[_childInclRecordTail].
    */
   DirtyCheckingRecord _recordHead, _recordTail;
+
+  /// Registry of record with their notifiers
+  Map<DirtyCheckingRecord<H>, StreamSubscription> _observableRecords;
 
   /**
    * Same as [_tail] but includes child-group records as well.
@@ -116,8 +121,7 @@ class DirtyCheckingChangeDetectorGroup<H> implements ChangeDetectorGroup<H> {
 
   WatchRecord<H> watch(Object object, String field, H handler) {
     assert(_root != null); // prove that we are not deleted connected;
-    return _recordAdd(new DirtyCheckingRecord(this, _fieldGetterFactory,
-                                              handler, field, object));
+    return _recordAdd(new DirtyCheckingRecord(this, _fieldGetterFactory, handler, field, object));
   }
 
   /**
@@ -146,6 +150,11 @@ class DirtyCheckingChangeDetectorGroup<H> implements ChangeDetectorGroup<H> {
     var root;
     assert((root = _root) != null);
     assert(root._assertRecordsOk());
+    // Start by canceling all observables
+    if (_observableRecords != null) {
+      _observableRecords.values.map((s) => s.cancel());
+      _observableRecords = null;
+    }
     DirtyCheckingRecord prevRecord = _recordHead._prevRecord;
     var childInclRecordTail = _childInclRecordTail;
     DirtyCheckingRecord nextRecord = childInclRecordTail._nextRecord;
@@ -191,6 +200,8 @@ class DirtyCheckingChangeDetectorGroup<H> implements ChangeDetectorGroup<H> {
   }
 
   void _recordRemove(DirtyCheckingRecord record) {
+    _cancelObservable(record);
+
     DirtyCheckingRecord previous = record._prevRecord;
     DirtyCheckingRecord next = record._nextRecord;
 
@@ -207,6 +218,17 @@ class DirtyCheckingChangeDetectorGroup<H> implements ChangeDetectorGroup<H> {
       if (previous != null) previous._nextRecord = next;
       if (next != null) next._prevRecord = previous;
     }
+  }
+
+  void _registerObservable(DirtyCheckingRecord<H> record, StreamSubscription subscription) {
+    if (_observableRecords == null) _observableRecords = new HashMap.identity();
+    _observableRecords[record] = subscription;
+  }
+
+  void _cancelObservable(DirtyCheckingRecord<H> record) {
+    if (_observableRecords == null) return;
+    var subscription = _observableRecords.remove(record);
+    if (subscription != null) subscription.cancel();
   }
 
   String toString() {
@@ -378,7 +400,9 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
       'GETTER / CLOSURE'
       'MAP[]',
       'ITERABLE',
-      'MAP'];
+      'LIST (CHANGENOTIFIER)',
+      'MAP',
+      'MAP (CHANGENOTIFIER)'];
   static const int _MODE_MARKER_ = 0;
   static const int _MODE_NOOP_ = 1;
   static const int _MODE_IDENTITY_ = 2;
@@ -386,7 +410,9 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
   static const int _MODE_GETTER_OR_METHOD_CLOSURE_ = 4;
   static const int _MODE_MAP_FIELD_ = 5;
   static const int _MODE_ITERABLE_ = 6;
-  static const int _MODE_MAP_ = 7;
+  static const int _MODE_LIST_OBS_ = 7;
+  static const int _MODE_MAP_ = 8;
+  static const int _MODE_MAP_OBS_ = 9;
 
   final DirtyCheckingChangeDetectorGroup _group;
   final FieldGetterFactory _fieldGetterFactory;
@@ -403,8 +429,7 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
   var _object;
   FieldGetter _getter;
 
-  DirtyCheckingRecord(this._group, this._fieldGetterFactory, this.handler,
-                      this.field, _object) {
+  DirtyCheckingRecord(this._group, this._fieldGetterFactory, this.handler, this.field, _object) {
     object = _object;
   }
 
@@ -424,7 +449,10 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
    * reflection. If [Map] then it sets up map accessor.
    */
   void set object(obj) {
+    _group._cancelObservable(this);
+
     _object = obj;
+
     if (obj == null) {
       _mode = _MODE_IDENTITY_;
       _getter = null;
@@ -434,29 +462,40 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
     if (field == null) {
       _getter = null;
       if (obj is Map) {
-        if (_mode != _MODE_MAP_) {
-          _mode =  _MODE_MAP_;
+        if (currentValue is! _MapChangeRecord) {
           currentValue = new _MapChangeRecord();
-        }
-        if (currentValue.isDirty) {
-          // We're dirty because the mapping we tracked by reference mutated.
-          // In addition, our reference has now changed.  We should compare the
-          // previous reported value of that mapping with the one from the
-          // new reference.
+        } else if (currentValue.isDirty) {
+          // We're dirty because the mapping we tracked by reference mutated. In addition, our
+          // reference has now changed.  We should compare the previous reported value of that
+          // mapping with the one from the new reference.
           currentValue._revertToPreviousState();
         }
-
+        if (obj is obs.ChangeNotifier) {
+          _mode = _MODE_MAP_OBS_; // Run the dccd after the record is added
+          var subscription = (obj as obs.ChangeNotifier).changes.listen((_) {
+            _mode = _MODE_MAP_OBS_; // Run the dccd after the record is updated
+          });
+          _group._registerObservable(this, subscription);
+        } else {
+          _mode = _MODE_MAP_;
+        }
       } else if (obj is Iterable) {
-        if (_mode != _MODE_ITERABLE_) {
-          _mode = _MODE_ITERABLE_;
+        if (currentValue is! _CollectionChangeRecord) {
           currentValue = new _CollectionChangeRecord();
-        }
-        if (currentValue.isDirty) {
-          // We're dirty because the collection we tracked by reference mutated.
-          // In addition, our reference has now changed.  We should compare the
-          // previous reported value of that collection with the one from the
-          // new reference.
+        } else if (currentValue.isDirty) {
+          // We're dirty because the collection we tracked by reference mutated. In addition, our
+          // reference has now changed.  We should compare the previous reported value of that
+          // collection with the one from the new reference.
           currentValue._revertToPreviousState();
+        }
+        if (obj is obs.ObservableList) {
+          _mode = _MODE_LIST_OBS_; // Run the dccd after the record is added
+          var subscription = (obj as obs.ObservableList).listChanges.listen((_) {
+            _mode = _MODE_LIST_OBS_; // Run the dccd after the record is updated
+          });
+          _group._registerObservable(this, subscription);
+        } else {
+          _mode = _MODE_ITERABLE_;
         }
       } else {
         _mode = _MODE_IDENTITY_;
@@ -505,8 +544,14 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
         current = object;
         _mode = _MODE_NOOP_;
         break;
+      case _MODE_MAP_OBS_:
+        _mode = _MODE_NOOP_; // no-op until next notification
+        return (currentValue as _MapChangeRecord)._check(object);
       case _MODE_MAP_:
         return (currentValue as _MapChangeRecord)._check(object);
+      case _MODE_LIST_OBS_:
+        _mode = _MODE_NOOP_; // no-op until next notification
+        return (currentValue as _CollectionChangeRecord)._check(object);
       case _MODE_ITERABLE_:
         return (currentValue as _CollectionChangeRecord)._check(object);
       default:
@@ -531,7 +576,6 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
     return false;
   }
 
-
   void remove() {
     _group._recordRemove(this);
   }
@@ -539,8 +583,6 @@ class DirtyCheckingRecord<H> implements Record<H>, WatchRecord<H> {
   String toString() =>
       '${_mode < _MODE_NAMES.length ?  _MODE_NAMES[_mode] : '?'}[$field]{$hashCode}';
 }
-
-final Object _INITIAL_ = new Object();
 
 class _MapChangeRecord<K, V> implements MapChangeRecord<K, V> {
   final _records = new HashMap<dynamic, KeyValueRecord>();

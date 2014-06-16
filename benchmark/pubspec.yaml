@@ -13,3 +13,8 @@ transformers:
 - $dart2js:
     minify: false
     checked: false
+
+# TODO(vicb): DI needs to be updated
+# conflicting core pkgs: intl, code_transformers
+dependency_overrides:
+  analyzer: '0.15.7'
