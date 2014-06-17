@@ -4,19 +4,6 @@ import "package:di/di.dart" show Injector, Visibility;
 
 RegExp _ATTR_NAME = new RegExp(r'\[([^\]]+)\]$');
 
-const String SHADOW_DOM_INJECTOR_NAME = 'SHADOW_INJECTOR';
-
-skipShadow(Injector injector)
-    => injector.name == SHADOW_DOM_INJECTOR_NAME ? injector.parent : injector;
-
-localVisibility (Injector requesting, Injector defining)
-    => identical(skipShadow(requesting), defining);
-
-directChildrenVisibility(Injector requesting, Injector defining) {
-  requesting = skipShadow(requesting);
-  return identical(requesting.parent, defining) || localVisibility(requesting, defining);
-}
-
 Directive cloneWithNewMap(Directive annotation, map)
     => annotation._cloneWithNewMap(map);
 
@@ -33,22 +20,28 @@ class Injectable {
   const Injectable();
 }
 
+class Visibility {
+  final String name;
+  const Visibility._(this.name);
+  toString() => 'Visibility: $name';
+}
+
 /**
  * Abstract supper class of [Controller], [Component], and [Decorator].
  */
 abstract class Directive {
 
   /// The directive can only be injected to other directives on the same element.
-  static const Visibility LOCAL_VISIBILITY = localVisibility;
+  static const Visibility LOCAL_VISIBILITY = const Visibility._('LOCAL');
 
   /// The directive can be injected to other directives on the same or child elements.
-  static const Visibility CHILDREN_VISIBILITY = null;
+  static const Visibility CHILDREN_VISIBILITY = const Visibility._('CHILDREN');
 
   /**
    * The directive on this element can only be injected to other directives
    * declared on elements which are direct children of the current element.
    */
-  static const Visibility DIRECT_CHILDREN_VISIBILITY = directChildrenVisibility;
+  static const Visibility DIRECT_CHILDREN_VISIBILITY = const Visibility._('DIRECT_CHILD');
 
   /**
    * CSS selector which will trigger this component/directive.

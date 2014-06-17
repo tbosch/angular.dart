@@ -65,7 +65,7 @@ class _DynamicApplication extends Application {
         ..bind(ClosureMap, toImplementation: DynamicClosureMap);
   }
 
-  Injector createInjector() => new DynamicInjector(modules: modules);
+  Injector createInjector() => new ModuleInjector(modules);
 }
 
 /**

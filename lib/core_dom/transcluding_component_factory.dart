@@ -9,6 +9,7 @@ class Content implements AttachAware, DetachAware {
   Content(this._port, this._element);
 
   void attach() {
+    print('Content.attach $_port');
     if (_port == null) return;
     _beginComment = _port.content(_element);
   }
@@ -26,11 +27,13 @@ class ContentPort {
   ContentPort(this._element);
 
   void pullNodes() {
+    print('pullNodes(${_element.innerHtml})');
     _childNodes.addAll(_element.nodes);
     _element.nodes = [];
   }
 
   content(dom.Element elt) {
+    print('content(${elt.outerHtml})');
     var hash = elt.hashCode;
     var beginComment = null;
 
@@ -96,25 +99,22 @@ class BoundTranscludingComponentFactory implements BoundComponentFactory {
         _directives);
   }
 
-  FactoryFn call(dom.Node node) {
+  List<Key> get callArgs => _CALL_ARGS;
+  static var _CALL_ARGS = [INJECTOR_KEY, SCOPE_KEY, VIEW_CACHE_KEY, HTTP_KEY,
+                          TEMPLATE_CACHE_KEY, DIRECTIVE_MAP_KEY, NG_BASE_CSS_KEY];
+  Function call(dom.Node node) {
     // CSS is not supported.
     assert(_component.cssUrls == null ||
            _component.cssUrls.isEmpty);
 
     var element = node as dom.Element;
-    return (Injector injector) {
+    return (NodeInjector injector, Scope scope, ViewCache viewCache, Http http,
+            TemplateCache templateCache, DirectiveMap directives, NgBaseCss baseCss) {
 
       var childInjector;
       var childInjectorCompleter; // Used if the ViewFuture is available before the childInjector.
 
       var component = _component;
-      Scope scope = injector.getByKey(SCOPE_KEY);
-      ViewCache viewCache = injector.getByKey(VIEW_CACHE_KEY);
-      Http http = injector.getByKey(HTTP_KEY);
-      TemplateCache templateCache = injector.getByKey(TEMPLATE_CACHE_KEY);
-      DirectiveMap directives = injector.getByKey(DIRECTIVE_MAP_KEY);
-      NgBaseCss baseCss = injector.getByKey(NG_BASE_CSS_KEY);
-
       var contentPort = new ContentPort(element);
 
       // Append the component's template as children
@@ -141,24 +141,15 @@ class BoundTranscludingComponentFactory implements BoundComponentFactory {
 
       Scope shadowScope = scope.createChild({});
 
-      var probe;
-      var childModule = new Module()
-          ..bind(_ref.type)
-          ..bind(NgElement)
-          ..bind(ContentPort, toValue: contentPort)
-          ..bind(Scope, toValue: shadowScope)
-          ..bind(TemplateLoader, toValue: templateLoader)
-          ..bind(dom.ShadowRoot, toValue: new ShadowlessShadowRoot(element));
+      childInjector = new ShadowlessComponentNodeInjector(injector, shadowScope,
+          templateLoader, new ShadowlessShadowRoot(element), contentPort);
+      childInjector.addDirective(_ref.typeKey, _ref.factory, _ref.paramKeys, Directive.LOCAL_VISIBILITY);
 
-      if (_f.config.elementProbeEnabled) {
-       childModule.bind(ElementProbe, toFactory: (_) => probe);
-      }
-      childInjector = injector.createChild([childModule], name: SHADOW_DOM_INJECTOR_NAME);
       if (childInjectorCompleter != null) {
         childInjectorCompleter.complete(childInjector);
       }
 
-      var controller = childInjector.get(_ref.type);
+      var controller = childInjector.getByKey(_ref.typeKey);
       shadowScope.context[component.publishAs] = controller;
       BoundComponentFactory._setupOnShadowDomAttach(controller, templateLoader, shadowScope);
       return controller;

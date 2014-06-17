@@ -10,6 +10,8 @@ dev_dependencies:
   mock: '>=0.10.0 <0.12.0'
 transformers:
 - angular
+- di:
+    path: ../../di.dart
 - $dart2js:
     minify: false
     checked: false

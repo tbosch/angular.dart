@@ -82,6 +82,7 @@ import 'package:angular/routing/module.dart';
 import 'package:angular/introspection_js.dart';
 
 import 'package:angular/core_dom/static_keys.dart';
+import 'package:angular/core_dom/node_injector.dart';
 
 /**
  * This is the top level module which describes all Angular components,
@@ -94,6 +95,7 @@ import 'package:angular/core_dom/static_keys.dart';
  */
 class AngularModule extends Module {
   AngularModule() {
+    NodeInjector.initUID();
     install(new CoreModule());
     install(new CoreDomModule());
     install(new DirectiveModule());
@@ -148,7 +150,7 @@ abstract class Application {
     modules.add(ngModule);
     ngModule..bind(VmTurnZone, toValue: zone)
             ..bind(Application, toValue: this)
-            ..bind(dom.Node, toFactory: (i) => i.getByKey(new Key(Application)).element);
+            ..bind(dom.Node, toFactory: (p) => p[0].element, inject: [Application]);
   }
 
   /**

@@ -1,6 +1,8 @@
 part of angular.core.dom_internal;
 
 var ngViewTag = new UserTag('NgView');
+var ngViewCloneTag = new UserTag('NgView / Clone');
+var ngViewQueryTag = new UserTag('NgView / Query');
 
 class TaggingViewFactory implements ViewFactory {
   final List<TaggedElementBinder> elementBinders;
@@ -14,11 +16,12 @@ class TaggingViewFactory implements ViewFactory {
   static Key _EVENT_HANDLER_KEY = new Key(EventHandler);
 
   View call(Injector injector, [List<dom.Node> nodes /* TODO: document fragment */]) {
+    var lastTag = ngViewCloneTag.makeCurrent();
     if (nodes == null) {
       nodes = cloneElements(templateNodes);
     }
     var timerId;
-    var lastTag = ngViewTag.makeCurrent();
+    ngViewTag.makeCurrent();
     try {
       assert((timerId = _perf.startTimer('ng.view')) != false);
       var view = new View(nodes, injector.getByKey(_EVENT_HANDLER_KEY));

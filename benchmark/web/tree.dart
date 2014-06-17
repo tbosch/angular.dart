@@ -246,6 +246,14 @@ class NgFreeTreeClass implements ShadowRootAware {
 
 // Main function runs the benchmark.
 main() {
+  Module.DEFAULT_REFLECTOR.add(new Key(NgFreeTreeClass), [new Key(Scope)], (p) => new NgFreeTreeClass(p[0]));
+  Module.DEFAULT_REFLECTOR.add(new Key(NgFreeTreeScoped), [new Key(Scope)], (p) => new NgFreeTreeScoped(p[0]));
+  Module.DEFAULT_REFLECTOR.add(new Key(NgFreeTree), [], (p) => new NgFreeTree());
+  Module.DEFAULT_REFLECTOR.add(new Key(TreeComponent), [], (p) => new TreeComponent());
+
+  Module.DEFAULT_REFLECTOR.add(new Key(NgIf), [new Key(BoundViewFactory), new Key(ViewPort), new Key(Scope)], (p) => new NgIf(p[0], p[1], p[2]));
+  Module.DEFAULT_REFLECTOR.add(new Key(Stringify), [], (p) => new Stringify());
+
   var cleanup, createDom;
 
   var module = new Module()

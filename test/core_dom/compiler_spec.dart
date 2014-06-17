@@ -1,10 +1,11 @@
 library compiler_spec;
 
 import '../_specs.dart';
+import 'package:angular/core_dom/node_injector.dart';
 
 
 forBothCompilers(fn) {
-  describe('walking compiler', () {
+  ddescribe('walking compiler', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: WalkingCompiler);
       return m;
@@ -12,7 +13,7 @@ forBothCompilers(fn) {
     fn('walking');
   });
 
-  describe('tagging compiler', () {
+  ddescribe('tagging compiler', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: TaggingCompiler);
       return m;
@@ -20,7 +21,7 @@ forBothCompilers(fn) {
     fn('tagging');
   });
 
-  describe('tagging compiler with ElementProbe disabled', () {
+  ddescribe('tagging compiler with ElementProbe disabled', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: TaggingCompiler);
       m.bind(CompilerConfig, toValue: new CompilerConfig.withOptions(elementProbeEnabled: false));
@@ -33,7 +34,7 @@ forBothCompilers(fn) {
 forAllCompilersAndComponentFactories(fn) {
   forBothCompilers(fn);
 
-  describe('transcluding components', () {
+  ddescribe('transcluding components', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: TaggingCompiler);
       m.bind(ComponentFactory, toImplementation: TranscludingComponentFactory);
@@ -691,6 +692,9 @@ void main() {
           var elts = es('<simple-attach></simple-attach>');
           var scope = _.rootScope.createChild({});
           compile(elts, _.injector.get(DirectiveMap))(_.injector.createChild([new Module()..bind(Scope, toValue: scope)]), elts);
+          print('=== injector${_.injector.hashCode}');
+          print(logger);
+          print(logger.hashCode);
           expect(logger).toEqual(['SimpleAttachComponent']);
           scope.destroy();
 
@@ -722,8 +726,9 @@ void main() {
       describe('invalid components', () {
         it('should throw a useful error message for missing selectors', () {
           Module module = new Module()
+              ..bind(DirectiveMap)
               ..bind(MissingSelector);
-          var injector = _.injector.createChild([module], forceNewInstances: [Compiler, DirectiveMap]);
+          var injector = _.injector.createChild([module]);
           var c = injector.get(Compiler);
           var directives = injector.get(DirectiveMap);
           expect(() {
@@ -734,8 +739,9 @@ void main() {
 
         it('should throw a useful error message for invalid selector', () {
           Module module = new Module()
+            ..bind(DirectiveMap)
             ..bind(InvalidSelector);
-          var injector = _.injector.createChild([module], forceNewInstances: [Compiler, DirectiveMap]);
+          var injector = _.injector.createChild([module]);
           var c = injector.get(Compiler);
           var directives = injector.get(DirectiveMap);
 
@@ -1024,7 +1030,7 @@ class PublishModuleDirectiveSuperType {
     module: PublishModuleAttrDirective.module)
 class PublishModuleAttrDirective implements PublishModuleDirectiveSuperType {
   static Module _module = new Module()
-      ..bind(PublishModuleDirectiveSuperType, toFactory: (i) => i.get(PublishModuleAttrDirective));
+      ..bind(PublishModuleDirectiveSuperType, toFactory: (p) => p[0], inject: [PublishModuleAttrDirective]);
   static module() => _module;
 
   static Injector _injector;
@@ -1288,6 +1294,7 @@ class SimpleAttachComponent implements AttachAware, ShadowRootAware {
   Logger logger;
   SimpleAttachComponent(this.logger) {
     logger('SimpleAttachComponent');
+    print('new SimpleAttachComponent($logger) ${logger.hashCode}}');
   }
   attach() => logger('attach');
   onShadowRoot(_) => logger('onShadowRoot');
