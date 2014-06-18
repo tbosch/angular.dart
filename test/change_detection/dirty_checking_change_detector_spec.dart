@@ -7,7 +7,7 @@ import 'package:angular/change_detection/dirty_checking_change_detector_static.d
 import 'package:angular/change_detection/dirty_checking_change_detector_dynamic.dart';
 import 'dart:collection';
 import 'dart:math';
-import 'package:observe/observe.dart' show ObservableList, ObservableMap;
+import 'package:observe/observe.dart' show ObservableList, ObservableMap, Observable, observable;
 
 DirtyCheckingChangeDetector<String> detector;
 
@@ -22,6 +22,36 @@ void testWithGetterFactory(FieldGetterFactory getterFactory) {
       it('should detect nothing', () {
         var changes = detector.collectChanges();
         expect(changes.moveNext()).toEqual(false);
+      });
+
+      it('should detect observable field changes', () {
+        var user = new _ObservableUser('', '');
+        Iterator changeIterator;
+
+        detector..watch(user, 'first', null)
+                ..watch(user, 'last', null)
+                ..collectChanges(); // throw away first set
+
+        changeIterator = detector.collectChanges();
+        expect(changeIterator.moveNext()).toEqual(false);
+        user..first = 'misko'
+            ..last = 'hevery';
+
+        changeIterator = detector.collectChanges();
+        expect(changeIterator.moveNext()).toEqual(true);
+        expect(changeIterator.current.currentValue).toEqual('misko');
+        expect(changeIterator.current.previousValue).toEqual('');
+        expect(changeIterator.moveNext()).toEqual(true);
+        expect(changeIterator.current.currentValue).toEqual('hevery');
+        expect(changeIterator.current.previousValue).toEqual('');
+        expect(changeIterator.moveNext()).toEqual(false);
+
+        user.first = 'victor';
+        changeIterator = detector.collectChanges();
+        expect(changeIterator.moveNext()).toEqual(true);
+        expect(changeIterator.current.currentValue).toEqual('victor');
+        expect(changeIterator.current.previousValue).toEqual('misko');
+        expect(changeIterator.moveNext()).toEqual(false);
       });
 
       it('should detect field changes', () {
@@ -819,6 +849,12 @@ class _User {
   bool isUnderAge() {
     return age != null ? age < 18 : false;
   }
+}
+
+class _ObservableUser extends Observable {
+  @observable String first;
+  @observable String last;
+  _ObservableUser([this.first, this.last]);
 }
 
 Matcher toEqualCollectionRecord({collection, previous, additions, moves, removals}) =>
