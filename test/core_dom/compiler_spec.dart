@@ -5,7 +5,7 @@ import 'package:angular/core_dom/node_injector.dart';
 
 
 forBothCompilers(fn) {
-  ddescribe('walking compiler', () {
+  describe('walking compiler', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: WalkingCompiler);
       return m;
@@ -13,7 +13,7 @@ forBothCompilers(fn) {
     fn('walking');
   });
 
-  ddescribe('tagging compiler', () {
+  describe('tagging compiler', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: TaggingCompiler);
       return m;
@@ -21,7 +21,7 @@ forBothCompilers(fn) {
     fn('tagging');
   });
 
-  ddescribe('tagging compiler with ElementProbe disabled', () {
+  describe('tagging compiler with ElementProbe disabled', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: TaggingCompiler);
       m.bind(CompilerConfig, toValue: new CompilerConfig.withOptions(elementProbeEnabled: false));
@@ -34,7 +34,7 @@ forBothCompilers(fn) {
 forAllCompilersAndComponentFactories(fn) {
   forBothCompilers(fn);
 
-  ddescribe('transcluding components', () {
+  describe('transcluding components', () {
     beforeEachModule((Module m) {
       m.bind(Compiler, toImplementation: TaggingCompiler);
       m.bind(ComponentFactory, toImplementation: TranscludingComponentFactory);

@@ -108,7 +108,8 @@ class ElementBinder {
 
   void _createAttrMappings(directive, scope, List<MappingParts> mappings, nodeAttrs, tasks) {
     Scope directiveScope; // Only created if there is a two-way binding in the element.
-    mappings.forEach((MappingParts p) {
+    for(var i = 0; i < mappings.length; i++) {
+      MappingParts p = mappings[i];
       var attrName = p.attrName;
       var attrValueAST = p.attrValueAST;
       AST dstAST = p.dstAST;
@@ -183,11 +184,12 @@ class ElementBinder {
           _bindCallback(dstAST.parsedExp, directive, nodeAttrs[attrName], scope);
           break;
       }
-    });
+    }
   }
 
   void _link(nodeInjector, probe, scope, nodeAttrs) {
-    _usableDirectiveRefs.forEach((DirectiveRef ref) {
+    for(var i = 0; i < _usableDirectiveRefs.length; i++) {
+      DirectiveRef ref = _usableDirectiveRefs[i];
       var directive = nodeInjector.getByKey(ref.typeKey);
       if (probe != null) {
         probe.directives.add(directive);
@@ -221,7 +223,7 @@ class ElementBinder {
       if (directive is DetachAware) {
         scope.on(ScopeEvent.DESTROY).listen((_) => directive.detach());
       }
-    });
+    }
   }
 
   void _createDirectiveFactories(DirectiveRef ref, NodeInjector nodeInjector, node,
@@ -276,7 +278,8 @@ class ElementBinder {
     NodeInjector nodeInjector = new NodeInjector(parentInjector, node, nodeAttrs,
         view, viewPort, viewFactory, scope);
 
-    directiveRefs.forEach((DirectiveRef ref) {
+    for(var i = 0; i < directiveRefs.length; i++) {
+      DirectiveRef ref = directiveRefs[i];
       Directive annotation = ref.annotation;
       var visibility = ref.annotation.visibility;
       if (ref.annotation is Controller) {
@@ -290,7 +293,7 @@ class ElementBinder {
           nodeInjector.addDirective(key, binding.factory, binding.parameterKeys, Directive.CHILDREN_VISIBILITY);
         });
       }
-    });
+    }
 
     if (_config.elementProbeEnabled) {
       probe = _expando[node] = nodeInjector.elementProbe;
