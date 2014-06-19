@@ -226,7 +226,6 @@ class AnnotationExtractor {
       var type = resolver.getType(annotation);
       if (type == null) {
         logger.warning('Unable to resolve $annotation, skipping metadata.');
-        continue;
       }
       _annotationElements.add(type.unnamedConstructor);
     }
