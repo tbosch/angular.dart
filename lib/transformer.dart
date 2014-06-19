@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:angular/tools/transformer/expression_generator.dart';
 import 'package:angular/tools/transformer/metadata_generator.dart';
 import 'package:angular/tools/transformer/static_angular_generator.dart';
+import 'package:angular/tools/transformer/smoke_generator.dart';
 import 'package:angular/tools/transformer/html_dart_references_generator.dart';
 import 'package:angular/tools/transformer/options.dart';
 import 'package:barback/barback.dart';
@@ -12,6 +13,7 @@ import 'package:code_transformers/resolver.dart';
 import 'package:di/transformer/injector_generator.dart' show InjectorGenerator;
 import 'package:di/transformer/options.dart' as di;
 import 'package:path/path.dart' as path;
+import 'package:observe/transformer.dart' show ObservableTransformer;
 
 
  /**
@@ -120,13 +122,15 @@ Map<String, String> _readStringMapValue(Map args, String name) {
 List<List<Transformer>> _createPhases(TransformOptions options) {
   var resolvers = new Resolvers(options.sdkDirectory);
   return [
+    [new ObservableTransformer()],
+    [new SmokeGenerator(resolvers)],
     [new HtmlDartReferencesGenerator(options)],
     [new _SerialTransformer([
       new ExpressionGenerator(options, resolvers),
       new InjectorGenerator(options.diOptions, resolvers),
       new MetadataGenerator(options, resolvers),
       new StaticAngularGenerator(options, resolvers)
-    ])]
+    ])],
   ];
 }
 

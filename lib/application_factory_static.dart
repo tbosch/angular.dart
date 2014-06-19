@@ -95,6 +95,8 @@ Application staticApplicationFactory(
     Map<Type, Object> metadata,
     Map<String, FieldGetter> fieldGetters,
     Map<String, FieldSetter> fieldSetters,
-    Map<String, Symbol> symbols) {
+    Map<String, Symbol> symbols,
+    Function initSmoke) {
+  initSmoke();
   return new _StaticApplication(typeFactories, metadata, fieldGetters, fieldSetters, symbols);
 }

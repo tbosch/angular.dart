@@ -44,11 +44,12 @@ import 'package:di/di.dart' show Module;
 import 'main_static_expressions.dart' as generated_static_expressions;
 import 'main_static_metadata.dart' as generated_static_metadata;
 import 'main_static_injector.dart' as generated_static_injector;
+import 'main_static_smoke.dart' as generated_static_smoke;
 
 class MyModule extends Module {}
 
 main() {
-  var app = staticApplicationFactory(generated_static_injector.factories, generated_static_metadata.typeAnnotations, generated_static_expressions.getters, generated_static_expressions.setters, generated_static_expressions.symbols)
+  var app = staticApplicationFactory(generated_static_injector.factories, generated_static_metadata.typeAnnotations, generated_static_expressions.getters, generated_static_expressions.setters, generated_static_expressions.symbols, generated_static_smoke.init)
     .addModule(new MyModule())
     .run();
 }
@@ -81,11 +82,12 @@ import 'package:di/di.dart' show Module;
 import 'main_static_expressions.dart' as generated_static_expressions;
 import 'main_static_metadata.dart' as generated_static_metadata;
 import 'main_static_injector.dart' as generated_static_injector;
+import 'main_static_smoke.dart' as generated_static_smoke;
 
 class MyModule extends Module {}
 
 main() {
-  var app = ng.staticApplicationFactory(generated_static_injector.factories, generated_static_metadata.typeAnnotations, generated_static_expressions.getters, generated_static_expressions.setters, generated_static_expressions.symbols)
+  var app = ng.staticApplicationFactory(generated_static_injector.factories, generated_static_metadata.typeAnnotations, generated_static_expressions.getters, generated_static_expressions.setters, generated_static_expressions.symbols, generated_static_smoke.init)
     .addModule(new MyModule())
     .run();
 }

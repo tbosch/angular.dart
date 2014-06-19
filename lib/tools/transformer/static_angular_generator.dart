@@ -53,6 +53,9 @@ class StaticAngularGenerator extends Transformer with ResolverTransformer {
     _addImport(transaction, unit,
         '${generatedFilePrefix}_static_injector.dart',
         'generated_static_injector');
+    _addImport(transaction, unit,
+        '${generatedFilePrefix}_static_smoke.dart',
+        'generated_static_smoke');
 
     var printer = transaction.commit();
     var url = id.path.startsWith('lib/')
@@ -76,8 +79,10 @@ class _NgDynamicToStaticVisitor extends GeneralizingAstVisitor {
 
   visitMethodInvocation(MethodInvocation m) {
     if (m.methodName.bestElement == ngDynamicFn) {
-      transaction.edit(m.methodName.beginToken.offset,
-          m.methodName.endToken.end, 'staticApplicationFactory');
+      var start = m.methodName.beginToken.offset;
+      transaction.edit(start,
+          m.methodName.endToken.end,
+          'staticApplicationFactory');
 
       var args = m.argumentList;
       transaction.edit(args.beginToken.offset + 1, args.end - 1,
@@ -85,7 +90,8 @@ class _NgDynamicToStaticVisitor extends GeneralizingAstVisitor {
         'generated_static_metadata.typeAnnotations, '
         'generated_static_expressions.getters, '
         'generated_static_expressions.setters, '
-        'generated_static_expressions.symbols');
+        'generated_static_expressions.symbols, '
+        'generated_static_smoke.init');
     }
     super.visitMethodInvocation(m);
   }
