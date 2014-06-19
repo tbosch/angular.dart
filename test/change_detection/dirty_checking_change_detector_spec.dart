@@ -169,6 +169,45 @@ void testWithGetterFactory(FieldGetterFactory getterFactory) {
         expect(detector.collectChanges(), toEqualChanges(['0a', '0A', '1b']));
       });
 
+      it('should cancel notification subscription on group removal', () {
+        var obj = {};
+        var observable = new _ObservableUser();
+        expect(observable.hasObservers).toEqual(false);
+        detector.watch(obj, 'a', '0a');
+        var child1a = detector.newGroup();
+        var child1b = detector.newGroup();
+        var child2 = child1a.newGroup();
+        child1a.watch(observable,'first', '1a');
+        child1b.watch(obj, 'a', '1b');
+        detector.watch(obj, 'a', '0A');
+        child1a.watch(obj,'a', '1A');
+        child2.watch(observable,'last', '2A');
+
+        var iterator;
+        obj['a'] = 1;
+        observable.first = 'foo';
+        observable.last = 'bar';
+        expect(detector.collectChanges(),
+            toEqualChanges(['0a', '0A', '1a', '1A', '2A', '1b']));
+        expect(observable.hasObservers).toEqual(true);
+
+        obj['a'] = 2;
+        child1a.remove(); // should also remove child2
+        expect(detector.collectChanges(), toEqualChanges(['0a', '0A', '1b']));
+        expect(observable.hasObservers).toEqual(false);
+      });
+
+      it('should cancel notification subscription on record removal', () {
+        var observable = new _ObservableUser();
+        expect(observable.hasObservers).toEqual(false);
+        var watch = detector.watch(observable, 'first', '0a');
+        observable.first = 'foo';
+        expect(detector.collectChanges(), toEqualChanges(['0a']));
+        expect(observable.hasObservers).toEqual(true);
+        watch.remove();
+        expect(observable.hasObservers).toEqual(false);
+      });
+
       it('should add watches within its own group', () {
         var obj = {};
         var ra = detector.watch(obj, 'a', 'a');
