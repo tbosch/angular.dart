@@ -6,6 +6,11 @@ import 'package:angular/change_detection/dirty_checking_change_detector_dynamic.
 import 'package:angular/change_detection/dirty_checking_change_detector_static.dart';
 import 'package:angular/change_detection/watch_group.dart';
 import 'package:benchmark_harness/benchmark_harness.dart';
+import 'package:observe/observe.dart';
+import 'package:observe/mirrors_used.dart';
+import "dart:io";
+import "dart:async";
+import "dart:convert";
 
 @MirrorsUsed(
     targets: const [
@@ -25,33 +30,148 @@ var _staticFieldGetterFactory = new StaticFieldGetterFactory({
 var _dynamicFieldGetterFactory = new DynamicFieldGetterFactory();
 
 main() {
-  _fieldRead();
-  _fieldReadGetter();
+  _collectionRead(observable:false, changeCount:0);
+  _collectionRead(observable:true, changeCount:0);
+
+  _collectionRead(observable:false, changeCount:1);
+  // TODO: gives a heap error: _collectionRead(observable:true, changeCount:1);
+
+  _collectionRead(observable:false, changeCount:10);
+// TODO: gives a heap error: _collectionRead(observable:true, changeCount:10);
+  
+  _groupAddRemove(observable:false);
+// TODO: Gives a heap error: _groupAddRemove(observable:true);
+
+  _fieldRead(observable:false, staticGetter: false, changeCount: 0);
+  _fieldRead(observable:true, staticGetter: false, changeCount: 0);
+  
+  _fieldRead(observable:false, staticGetter: false, changeCount: 1);
+  _fieldRead(observable:true, staticGetter: false, changeCount: 1);
+
+  _fieldRead(observable:false, staticGetter: false, changeCount: 10);
+  _fieldRead(observable:true, staticGetter: false, changeCount: 10);
+
+  _fieldRead(observable:false, staticGetter: true, changeCount: 0);
+  _fieldRead(observable:true, staticGetter: true, changeCount: 0);
+
+  _fieldRead(observable:false, staticGetter: true, changeCount: 1);
+  _fieldRead(observable:true, staticGetter: true, changeCount: 1);
+
+  _fieldRead(observable:false, staticGetter: true, changeCount: 10);
+  _fieldRead(observable:true, staticGetter: true, changeCount: 10);
+  
   _mapRead();
   _methodInvoke0();
   _methodInvoke1();
   _function2();
-  new _CollectionCheck().report();
 }
 
-class _CollectionCheck extends BenchmarkBase {
-  List<int> list = new List.generate(1000, (i) => i);
+_collectionRead({bool observable, int changeCount}) {
   var detector = new DirtyCheckingChangeDetector(_dynamicFieldGetterFactory);
 
-  _CollectionCheck(): super('change-detect List[1000]') {
-    detector
-        ..watch(list, null, 'handler')
-        ..collectChanges(); // intialize
+  var description = '';
+  
+  List<int>list = new List.generate(20, (i) => i);
+  if (observable) {
+    list = new ObservableList<int>.from(list);
+    description += 'observable';
+  } else {
+    description += 'dc';
   }
-
-  run() {
+  if (changeCount == 0) {
+    description +=' no change';
+  } else if (changeCount == 1) {
+    description +=' one change';
+  } else if (changeCount > 1) {
+    description +=' all change';
+  }
+  detector
+      ..watch(list, null, 'handler')
+      ..collectChanges(); // intialize
+  
+  time(description+' List[20]', () {
     detector.collectChanges();
+    if (changeCount == 1) {
+      list[3]++;
+    } else if (changeCount > 1) {
+      for (var i=0; i<list.length; i++) {
+        list[i]++;
+      }
+    }    
+  });
+}
+
+_groupAddRemove({bool observable}) {
+  var description = '';
+  if (observable) {
+    description += 'observable';
+  } else {
+    description += 'dc';
   }
+  var rootWatchGrp = new RootWatchGroup(_staticFieldGetterFactory,
+        new DirtyCheckingChangeDetector(_staticFieldGetterFactory), {});
+  var testRun = () {
+    for (int i=0; i<10; i++) {
+          WatchGroup child = rootWatchGrp.newGroup(observable ? new _ObservableObj() : new _Obj())
+                ..watch(_parse('a'), _reactionFn)
+                ..watch(_parse('b'), _reactionFn)
+                ..watch(_parse('c'), _reactionFn)
+                ..watch(_parse('d'), _reactionFn)
+                ..watch(_parse('e'), _reactionFn)
+                ..watch(_parse('f'), _reactionFn)
+                ..watch(_parse('g'), _reactionFn)
+                ..watch(_parse('h'), _reactionFn)
+                ..watch(_parse('i'), _reactionFn)
+                ..watch(_parse('j'), _reactionFn);      
+          child.remove();          
+        }
+  };
+  /* Uncomment this to run the testRuns controlled by hitting enter on the console to debug it in Observatory
+  import "dart:io";
+  import "dart:async";
+  import "dart:convert";
+  
+  var stream = stdin.transform(UTF8.decoder).transform(new LineSplitter());
+  StreamSubscription cmdSubscription;
+  cmdSubscription = stream.listen((line) { 
+     if (line == 'exit') {
+       cmdSubscription.cancel();
+     } else {
+       print('next loop');
+       testRun();
+     } 
+    });
+  */
+  time(description+' add/remove 10 watchGroups with 20 watches', testRun);
 }
 
-_fieldRead() {
-  var watchGrp = new RootWatchGroup(_dynamicFieldGetterFactory,
-      new DirtyCheckingChangeDetector(_dynamicFieldGetterFactory), new _Obj())
+_fieldRead({bool observable, bool staticGetter, int changeCount}) {
+  var description = '';
+  var obj;
+  if (observable) {
+    description += 'observable';
+    obj = new _ObservableObj();
+  } else {
+    description += 'dc';
+    obj = new _Obj();
+  }
+  var fieldGetterFactory;
+  if (staticGetter) {
+    description += ' staticGetter';
+    fieldGetterFactory = _staticFieldGetterFactory;
+  } else {
+    description += ' dynamicGetter';
+    fieldGetterFactory = _dynamicFieldGetterFactory;
+  }
+  if (changeCount == 0) {
+    description +=' no change';
+  } else if (changeCount == 1) {
+    description +=' one change';
+  } else if (changeCount > 1) {
+    description +=' all change';
+  }
+  var watchGrp = new RootWatchGroup(fieldGetterFactory,
+      new DirtyCheckingChangeDetector(fieldGetterFactory), obj)
           ..watch(_parse('a'), _reactionFn)
           ..watch(_parse('b'), _reactionFn)
           ..watch(_parse('c'), _reactionFn)
@@ -74,37 +194,34 @@ _fieldRead() {
           ..watch(_parse('t'), _reactionFn);
 
   print('Watch: ${watchGrp.fieldCost}; eval: ${watchGrp.evalCost}');
-
-  time('fieldRead', () => watchGrp.detectChanges());
-}
-
-_fieldReadGetter() {
-  var  watchGrp= new RootWatchGroup(_staticFieldGetterFactory,
-      new DirtyCheckingChangeDetector(_staticFieldGetterFactory), new _Obj())
-          ..watch(_parse('a'), _reactionFn)
-          ..watch(_parse('b'), _reactionFn)
-          ..watch(_parse('c'), _reactionFn)
-          ..watch(_parse('d'), _reactionFn)
-          ..watch(_parse('e'), _reactionFn)
-          ..watch(_parse('f'), _reactionFn)
-          ..watch(_parse('g'), _reactionFn)
-          ..watch(_parse('h'), _reactionFn)
-          ..watch(_parse('i'), _reactionFn)
-          ..watch(_parse('j'), _reactionFn)
-          ..watch(_parse('k'), _reactionFn)
-          ..watch(_parse('l'), _reactionFn)
-          ..watch(_parse('m'), _reactionFn)
-          ..watch(_parse('n'), _reactionFn)
-          ..watch(_parse('o'), _reactionFn)
-          ..watch(_parse('p'), _reactionFn)
-          ..watch(_parse('q'), _reactionFn)
-          ..watch(_parse('r'), _reactionFn)
-          ..watch(_parse('s'), _reactionFn)
-          ..watch(_parse('t'), _reactionFn);
-
-  print('Watch: ${watchGrp.fieldCost}; eval: ${watchGrp.evalCost}');
-
-  time('fieldReadGetter', () => watchGrp.detectChanges());
+  
+  time(description+' 20 field watches on same object', () {
+    if (changeCount == 1) {
+      obj.c++;
+    } else if (changeCount > 1) {
+      obj.a++;
+      obj.b++;
+      obj.c++;
+      obj.d++;
+      obj.e++;
+      obj.f++;
+      obj.g++;
+      obj.h++;
+      obj.i++;
+      obj.j++;
+      obj.k++;
+      obj.l++;
+      obj.m++;
+      obj.n++;
+      obj.o++;
+      obj.p++;
+      obj.q++;
+      obj.r++;
+      obj.s++;
+      obj.t++;
+    }
+    watchGrp.detectChanges(); 
+  });  
 }
 
 _mapRead() {
@@ -313,5 +430,32 @@ class _Obj {
   methodR() => r;
   methodS() => s;
   methodT() => t;
+
+}
+
+class _ObservableObj extends ChangeNotifier {
+  @observable var a = 1;
+  @observable var b = 2;
+  @observable var c = 3;
+  @observable var d = 4;
+  @observable var e = 5;
+
+  @observable var f = 6;
+  @observable var g = 7;
+  @observable var h = 8;
+  @observable var i = 9;
+  @observable var j = 10;
+
+  @observable var k = 11;
+  @observable var l = 12;
+  @observable var m = 13;
+  @observable var n = 14;
+  @observable var o = 15;
+
+  @observable var p = 16;
+  @observable var q = 17;
+  @observable var r = 18;
+  @observable var s = 19;
+  @observable var t = 20;
 
 }
